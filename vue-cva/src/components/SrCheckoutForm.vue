@@ -40,22 +40,24 @@
 </template>
 
 <script setup>
-import {ref, onMounted, reactive} from 'vue';
+import {ref, onMounted, computed, onBeforeMount} from 'vue';
 import {loadStripe} from '@stripe/stripe-js';
 import {StripeElements, StripeElement} from 'vue-stripe-js';
+import {useStripeStore} from '../stores/stripeStore';
 
 import SrMessages from './SrMessages.vue';
 
 const isLoading = ref(false);
 const messages = ref([]);
 const stripeLoaded = ref(false);
+const store = useStripeStore();
 const key = ref('');
 
 //let stripe;
 //let elements;
-const elementsOptions = reactive({
-  clientSecret: 'pi_3Q72oSDkcf3EClPZ26O7Z4wS_secret_wJNASHJKRha5IDbq93k7tvjyQ',
-});
+const elementsOptions = computed(() => ({
+  clientSecret: store.clientSecret,
+}));
 const elements = ref();
 const card = ref();
 const elms = ref();
@@ -71,30 +73,30 @@ const instanceOptions = ref({
   // https://stripe.com/docs/js/initializing#init_stripe_js-options
 });
 
-onMounted(async () => {
-  const {publishableKey} = await fetch('/api/config').then((res) => res.json());
-  const stripePromise = loadStripe(publishableKey);
-  stripePromise.then(async () => {
+onBeforeMount(async () => {
+  await store.getKey();
+  const stripePromise = loadStripe(store.key);
+  stripePromise.then(async() => {
+    await store.createPaymentIntent();
     stripeLoaded.value = true;
-    key.value = publishableKey;
-    const {clientSecret, error: backendError} = await fetch(
-      '/api/create-payment-intent'
-    ).then((res) => res.json());
-
-    if (backendError) {
-      messages.value.push(backendError.message);
-    }
-    messages.value.push(`Client secret returned.`);
-    elementsOptions.clientSecret = clientSecret;
+    key.value = store.key;
+  }).finally(() => {
     elements.value = elms.value.elements;
-    console.log(elements.value);
-  });
+  })
+});
+
+onMounted(async () => {
+
+  if (store.backendError) {
+    messages.value.push(store.backendError.message);
+  }
+  messages.value.push(`Client secret returned.`);
+  //store.clientSecret = clientSecret;
+
+  //console.log(clientSecret);
 
   //elementsOptions.value = clientSecret
   //console.log(clientSecret)
-
-
-
 
   //elements = stripe.elements({clientSecret});
   // const paymentElement = elements.create('payment');

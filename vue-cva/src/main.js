@@ -5,6 +5,7 @@ import App from './App.vue';
 
 import SrCheckoutForm from './components/SrCheckoutForm.vue'
 import SrReturn from './components/SrReturn.vue'
+import { createPinia } from 'pinia'
 
 const routes = [
   { 
@@ -34,4 +35,6 @@ router.afterEach((to) => {
   });
 });
 
-createApp(App).use(router).mount('#app');
+const pinia = createPinia()
+
+createApp(App).use(router).use(pinia).mount('#app');
